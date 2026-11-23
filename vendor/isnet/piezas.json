@@ -1,0 +1,72 @@
+{
+ "motor.wasm": {
+  "bytes": 28747738,
+  "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec",
+  "piezas": [
+   "motor.wasm.0",
+   "motor.wasm.1"
+  ]
+ },
+ "isnet-fp16.onnx": {
+  "bytes": 88152708,
+  "sha256": "2eb4b5dda7ec41c617e59706e5aafa1f978c9a5f983d2518d9f0ae4d6eb04f20",
+  "piezas": [
+   "isnet-fp16.onnx.0",
+   "isnet-fp16.onnx.1",
+   "isnet-fp16.onnx.2",
+   "isnet-fp16.onnx.3",
+   "isnet-fp16.onnx.4"
+  ]
+ },
+ "isnet.onnx": {
+  "bytes": 176149806,
+  "sha256": "cc2c9f5c1751b9737cb81e708ff0c5e9542c2205daed22418a4fd2ab5d4c481a",
+  "piezas": [
+   "isnet.onnx.0",
+   "isnet.onnx.1",
+   "isnet.onnx.2",
+   "isnet.onnx.3",
+   "isnet.onnx.4",
+   "isnet.onnx.5",
+   "isnet.onnx.6",
+   "isnet.onnx.7",
+   "isnet.onnx.8"
+  ]
+ },
+ "modnet.onnx": {
+  "bytes": 25888640,
+  "sha256": "07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9",
+  "piezas": [
+   "modnet.onnx.0",
+   "modnet.onnx.1"
+  ]
+ },
+ "caras.onnx": {
+  "bytes": 1575192,
+  "sha256": "90aa58545d305bf3832d31bb2ebfc5337ab471ed2408437563b6ffb33d5d526a",
+  "piezas": [
+   "caras.onnx"
+  ]
+ },
+ "lama.onnx": {
+  "bytes": 37210288,
+  "sha256": "d69db99d833ae6fb194fbbe43aa77de5369fff2d906053d693c16ae96ce9a312",
+  "piezas": [
+   "lama.onnx.0",
+   "lama.onnx.1"
+  ]
+ },
+ "ddcolor.onnx": {
+  "bytes": 135733776,
+  "sha256": "c8a9ee12dc632a7c463a73c1ef32e180a701f15d9e4dc535b551a64574cab059",
+  "piezas": [
+   "ddcolor.onnx.0",
+   "ddcolor.onnx.1",
+   "ddcolor.onnx.2",
+   "ddcolor.onnx.3",
+   "ddcolor.onnx.4",
+   "ddcolor.onnx.5",
+   "ddcolor.onnx.6"
+  ]
+ }
+}

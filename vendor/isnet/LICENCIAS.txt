@@ -1,0 +1,29 @@
+Quitar fondo — componentes de esta carpeta
+
+· fondo.mjs: código propio de Imagomakk (Thormakk), con la licencia del sitio.
+· ort.webgpu.min.mjs, ort-wasm-simd-threaded.asyncify.mjs y motor.wasm.* (partido en pedazos de 20 MB):
+  ONNX Runtime Web 1.31.1, de Microsoft, licencia MIT (LICENCIA-onnxruntime.txt).
+· isnet-fp16.onnx.* e isnet.onnx.* (partidos en pedazos de 20 MB): modelo ISNet general-use en formato ONNX,
+  publicado por IMG.LY con licencia MIT en https://huggingface.co/imgly/isnet-general-onnx
+  (archivos onnx/model_fp16.onnx y onnx/model.onnx; sha256 en piezas.json).
+  Arquitectura y pesos originales: X. Qin y otros, "Highly Accurate Dichotomous Image Segmentation" (ECCV 2022),
+  https://github.com/xuebinqin/DIS, licencia Apache-2.0.
+· modnet.onnx.* (partido en pedazos de 20 MB): modelo MODNet para recortar personas, en formato ONNX, publicado con
+  licencia Apache-2.0 en https://huggingface.co/Xenova/modnet (archivo onnx/model.onnx; sha256 en piezas.json).
+  Original: Z. Ke y otros, "MODNet: Real-Time Trimap-Free Portrait Matting via Objective Decomposition" (AAAI 2022),
+  https://github.com/ZHKKKe/MODNet, licencia Apache-2.0.
+· caras.onnx: detector de caras "Ultra-Light-Fast-Generic-Face-Detector-1MB", versión RFB-640, de linzai,
+  licencia MIT (LICENCIA-detector-caras.txt): https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB
+  (archivo models/onnx/version-RFB-640.onnx; sha256 en piezas.json).
+· lama.onnx.* (partido en pedazos de 20 MB): LaMa ("big-lama") para Borrar objetos, en formato ONNX con los
+  pesos comprimidos a int4/int8, publicado con licencia Apache-2.0 en https://huggingface.co/othytenk/lama-int4-int8
+  (archivo lama_int4_int8.onnx; sha256 en piezas.json; LICENCIA-lama.txt). Conversión a ONNX: Carve/LaMa-ONNX (Apache-2.0).
+  Original: R. Suvorov y otros, "Resolution-robust Large Mask Inpainting with Fourier Convolutions" (WACV 2022),
+  https://github.com/advimman/lama, licencia Apache-2.0. Entrenado con el banco de fotos Places2.
+· ddcolor.onnx.* (partido en pedazos de 20 MB): DDColor-tiny para Colorear fotos, en formato ONNX, publicado con
+  licencia Apache-2.0 en https://huggingface.co/edgetools/ddcolor (archivo ddcolor-tiny-fp16.onnx, sha256
+  2653da00dc15e54a45e5200b61dbf82ee9ceaf56b02bb9b9657569ac775e82e6). Cambio nuestro: los cálculos van en números de
+  32 bits (los pesos siguen guardados en 16 bits y se convierten al cargar); sha256 del resultado en piezas.json.
+  colorear-tr.mjs: código propio. Original: X. Kang y otros, "DDColor: Towards Photo-Realistic Image Colorization via
+  Dual Decoders" (ICCV 2023), https://github.com/piddnad/DDColor, licencia Apache-2.0 (LICENCIA-ddcolor.txt).
+  Entrenado con el banco de fotos ImageNet.

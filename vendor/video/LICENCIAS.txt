@@ -1,0 +1,2 @@
+Video: video.mjs junta Mediabunny 1.66.2 (MPL-2.0, código sin cambios: https://github.com/Vanilagy/mediabunny) para armar MP4/WebM con WebCodecs,
+y gifuct-js 2.1.2 (MIT) para leer los cuadros de un GIF. Armado con esbuild (solo las partes usadas).
