@@ -7,6 +7,7 @@
 <title>Imagomakk के बारे में — Imagomakk</title>
 <meta content="Imagomakk उन टूल्स को एक साथ लाता है जिनकी लोगों को हर दिन जरूरत होती है: बैकग्राउंड हटाना, कंप्रेस करना, कन्वर्ट, क्रॉप करना, हटाना..." name="description"/>
 <link href="https://imago.thormakk.dev/hi/about-imagomakk/" rel="canonical"/>
+<meta content="ca-pub-1961541553388127" name="google-adsense-account"/>
 <link rel="alternate" hreflang="cs" href="https://imago.thormakk.dev/cs/o-imagomakk/">
 <link rel="alternate" hreflang="de" href="https://imago.thormakk.dev/de/uber-imagomakk/">
 <link rel="alternate" hreflang="en" href="https://imago.thormakk.dev/about-imagomakk/">
@@ -31,7 +32,7 @@
 <link href="/css/imagomakk.css" rel="stylesheet"/>
 <script>
 /* Tema antes de pintar (evita parpadeo). ?tema=tinta|papel */
-(function(){var d=document.documentElement;d.classList.add("js");try{if(localStorage.getItem("imagomakk-sin-anuncios")){d.classList.add("sin-anuncios");d.dataset.anuncio="ninguno"}}catch(e){}var q=new URLSearchParams(location.search),t=q.get("tema");
+(function(){var d=document.documentElement;d.classList.add("js");if(location.hostname==="imago.thormakk.dev")d.classList.add("produccion");try{if(localStorage.getItem("imagomakk-sin-anuncios")){d.classList.add("sin-anuncios");d.dataset.anuncio="ninguno"}}catch(e){}var q=new URLSearchParams(location.search),t=q.get("tema");
 try{t=t||localStorage.getItem("imagomakk-tema")}catch(e){}
 if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches)t="tinta";
 if(t==="tinta"||t==="papel")d.dataset.tema=t;})();

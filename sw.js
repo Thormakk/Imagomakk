@@ -1,4 +1,4 @@
-var VERSION = "imagomakk-2026-11-23-100";
+var VERSION = "imagomakk-2026-11-23-101";
 
 var BASE = "imagomakk-base-" + VERSION, PESADO = "imagomakk-pesado-20";
 
