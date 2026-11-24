@@ -96,36 +96,49 @@ async function contar(req, env) {
   });
 }
 
-const b64url = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), c => c.charCodeAt(0));
+const ADMIN_HORAS = 12, ADMIN_MIN = 16;
 
-let certs = null, certsHasta = 0;
+const enc = new TextEncoder;
 
-async function accesoValido(req, env) {
-  const jwt = req.headers.get("cf-access-jwt-assertion");
-  if (!jwt || !env.ACCESS_EQUIPO || !env.ACCESS_AUD) return false;
-  const partes = jwt.split(".");
-  if (partes.length !== 3) return false;
-  try {
-    const cab = JSON.parse((new TextDecoder).decode(b64url(partes[0])));
-    const datos = JSON.parse((new TextDecoder).decode(b64url(partes[1])));
-    const equipo = env.ACCESS_EQUIPO.includes("://") ? env.ACCESS_EQUIPO.replace(/\/$/, "") : "https://" + env.ACCESS_EQUIPO;
-    if (!certs || Date.now() > certsHasta) {
-      certs = (await (await fetch(equipo + "/cdn-cgi/access/certs")).json()).keys;
-      certsHasta = Date.now() + 36e5;
-    }
-    const jwk = certs.find(k => k.kid === cab.kid);
-    if (!jwk || cab.alg !== "RS256") return false;
-    const clave = await crypto.subtle.importKey("jwk", jwk, {
-      name: "RSASSA-PKCS1-v1_5",
-      hash: "SHA-256"
-    }, false, [ "verify" ]);
-    const ok = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", clave, b64url(partes[2]), (new TextEncoder).encode(partes[0] + "." + partes[1]));
-    const aud = Array.isArray(datos.aud) ? datos.aud : [ datos.aud ];
-    return ok && aud.includes(env.ACCESS_AUD) && datos.iss === equipo && datos.exp * 1e3 > Date.now();
-  } catch (e) {
-    return false;
-  }
+const hex = b => [ ...new Uint8Array(b) ].map(x => x.toString(16).padStart(2, "0")).join("");
+
+async function firma(env, texto) {
+  const k = await crypto.subtle.importKey("raw", enc.encode(env.ADMIN_CLAVE), {
+    name: "HMAC",
+    hash: "SHA-256"
+  }, false, [ "sign" ]);
+  return hex(await crypto.subtle.sign("HMAC", k, enc.encode(texto)));
 }
+
+function iguales(a, b) {
+  if (a.length !== b.length) return false;
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return d === 0;
+}
+
+const claveLista = env => typeof env.ADMIN_CLAVE === "string" && env.ADMIN_CLAVE.length >= ADMIN_MIN;
+
+async function sesionValida(req, env) {
+  if (!claveLista(env)) return false;
+  const m = (req.headers.get("cookie") || "").match(/(?:^|;\s*)admin=(\d+)\.([0-9a-f]{64})/);
+  if (!m || +m[1] < Date.now()) return false;
+  return iguales(m[2], await firma(env, "admin:" + m[1]));
+}
+
+async function claveCorrecta(env, clave) {
+  if (!claveLista(env) || typeof clave !== "string") return false;
+  return iguales(await firma(env, "x:" + clave), await firma(env, "x:" + env.ADMIN_CLAVE));
+}
+
+const paginaEntrar = error => new Response(`<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">\n<title>Imagomakk</title><style>body{margin:0;background:#F2EFE8;color:#2A2723;font:15px/1.5 system-ui,sans-serif}main{max-width:360px;margin:15vh auto;padding:0 20px}\nlabel{display:block;font-size:13px;color:#6E685E;margin-bottom:6px}input{width:100%;box-sizing:border-box;font:inherit;padding:8px 0;border:0;border-bottom:1px solid #2A2723;background:none;color:inherit;outline:none}\nbutton{margin-top:20px;background:none;border:.5px solid #8A4F0C;color:#8A4F0C;border-radius:6px;padding:6px 16px;font:inherit;cursor:pointer}.error{color:#8A4F0C;font-size:13px}</style></head><body><main>\n<form method="post" action="/admin/entrar"><label for="clave">Clave</label><input id="clave" name="clave" type="password" autocomplete="current-password" autofocus required>\n${error ? '<p class="error">Clave incorrecta.</p>' : ""}<button>Entrar</button></form></main></body></html>`, {
+  status: error ? 403 : 200,
+  headers: {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+    "x-robots-tag": "noindex"
+  }
+});
 
 const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({
   "&": "&amp;",
@@ -135,14 +148,40 @@ const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({
 }[c]));
 
 async function admin(req, env) {
-  if (!await accesoValido(req, env)) return new Response("Acceso no autorizado.", {
-    status: 403,
+  const url = new URL(req.url);
+  if (!claveLista(env)) return new Response("Falta configurar ADMIN_CLAVE (16 caracteres o más).", {
+    status: 503,
     headers: {
       "content-type": "text/plain; charset=utf-8"
     }
   });
+  if (req.method === "POST" && url.pathname === "/admin/entrar") {
+    if (!mismoSitio(req) || !req.headers.get("origin")) return new Response(null, {
+      status: 403
+    });
+    const clave = (await req.formData()).get("clave");
+    if (!await claveCorrecta(env, clave)) {
+      await new Promise(r => setTimeout(r, 1e3));
+      return paginaEntrar(true);
+    }
+    const vence = Date.now() + ADMIN_HORAS * 36e5;
+    return new Response(null, {
+      status: 303,
+      headers: {
+        location: url.origin + "/admin/",
+        "set-cookie": `admin=${vence}.${await firma(env, "admin:" + vence)}; Path=/admin; Max-Age=${ADMIN_HORAS * 3600}; HttpOnly; Secure; SameSite=Strict`
+      }
+    });
+  }
+  if (url.pathname === "/admin/salir") return new Response(null, {
+    status: 303,
+    headers: {
+      location: url.origin + "/admin/",
+      "set-cookie": "admin=; Path=/admin; Max-Age=0; HttpOnly; Secure; SameSite=Strict"
+    }
+  });
+  if (!await sesionValida(req, env)) return paginaEntrar(false);
   await tablas(env.DB);
-  const url = new URL(req.url);
   if (req.method === "POST" && url.pathname === "/admin/borrar") {
     if (!mismoSitio(req) || !req.headers.get("origin")) return new Response(null, {
       status: 403
@@ -159,7 +198,7 @@ async function admin(req, env) {
   const filasUso = uso.map(u => `<tr><td>${esc(u.herramienta)}</td><td>${u.bien}</td><td>${u.mal}</td><td>${u.cancelados}</td><td>${u.si}</td><td>${u.no}</td></tr>`).join("");
   const filasErr = errores.map(e => `<tr><td>${esc(e.herramienta)}</td><td>${esc(e.resultado)}</td><td>${e.n}</td></tr>`).join("");
   const avisos = [ !env.TURNSTILE_SECRETO && "Turnstile no está configurado: el formulario acepta mensajes sin verificación." ].filter(Boolean);
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">\n<title>Imagomakk — mensajes</title><style>body{margin:0;background:#F2EFE8;color:#2A2723;font:15px/1.5 system-ui,sans-serif}main{max-width:900px;margin:0 auto;padding:32px 20px}\nh1{font-weight:400;font-size:28px;margin:0 0 24px}h2{font-size:13px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;margin:36px 0 12px;border-bottom:1px solid #2A2723;padding-bottom:8px}\narticle{border-bottom:1px solid #DCD6CA;padding:14px 0}.meta{color:#6E685E;font-size:13px;margin:0}.texto{white-space:pre-wrap;margin:6px 0}a{color:#8A4F0C}\nform{margin:6px 0 0}button{background:none;border:0;color:#8A4F0C;cursor:pointer;padding:0;font:inherit;font-size:13px}table{border-collapse:collapse;width:100%}\ntd,th{text-align:left;padding:6px 8px;border-bottom:1px solid #DCD6CA;font-size:14px}th{font-weight:500;color:#6E685E}.aviso{color:#8A4F0C}</style></head><body><main>\n<h1>Imagomakk — mensajes y uso</h1>${avisos.map(a => `<p class="aviso">${esc(a)}</p>`).join("")}\n<h2>Mensajes (${msj.length})</h2>${filasMsj}\n<h2>Uso de los últimos 30 días</h2><table><tr><th>Herramienta</th><th>Bien</th><th>Con error</th><th>Cancelados</th><th>Te sirvió: sí</th><th>No</th></tr>${filasUso || '<tr><td colspan="6">Sin datos.</td></tr>'}</table>\n<h2>Errores de los últimos 30 días</h2><table><tr><th>Herramienta</th><th>Error</th><th>Veces</th></tr>${filasErr || '<tr><td colspan="3">Sin errores.</td></tr>'}</table>\n</main></body></html>`;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">\n<title>Imagomakk — mensajes</title><style>body{margin:0;background:#F2EFE8;color:#2A2723;font:15px/1.5 system-ui,sans-serif}main{max-width:900px;margin:0 auto;padding:32px 20px}\nh1{font-weight:400;font-size:28px;margin:0 0 24px}h2{font-size:13px;letter-spacing:1.2px;text-transform:uppercase;font-weight:600;margin:36px 0 12px;border-bottom:1px solid #2A2723;padding-bottom:8px}\narticle{border-bottom:1px solid #DCD6CA;padding:14px 0}.meta{color:#6E685E;font-size:13px;margin:0}.texto{white-space:pre-wrap;margin:6px 0}a{color:#8A4F0C}\nform{margin:6px 0 0}button{background:none;border:0;color:#8A4F0C;cursor:pointer;padding:0;font:inherit;font-size:13px}table{border-collapse:collapse;width:100%}\ntd,th{text-align:left;padding:6px 8px;border-bottom:1px solid #DCD6CA;font-size:14px}th{font-weight:500;color:#6E685E}.aviso{color:#8A4F0C}</style></head><body><main>\n<h1>Imagomakk — mensajes y uso</h1><p class="meta"><a href="/admin/salir">Salir</a></p>${avisos.map(a => `<p class="aviso">${esc(a)}</p>`).join("")}\n<h2>Mensajes (${msj.length})</h2>${filasMsj}\n<h2>Uso de los últimos 30 días</h2><table><tr><th>Herramienta</th><th>Bien</th><th>Con error</th><th>Cancelados</th><th>Te sirvió: sí</th><th>No</th></tr>${filasUso || '<tr><td colspan="6">Sin datos.</td></tr>'}</table>\n<h2>Errores de los últimos 30 días</h2><table><tr><th>Herramienta</th><th>Error</th><th>Veces</th></tr>${filasErr || '<tr><td colspan="3">Sin errores.</td></tr>'}</table>\n</main></body></html>`;
   return new Response(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
