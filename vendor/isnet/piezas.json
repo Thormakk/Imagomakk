@@ -3,9 +3,9 @@
   "bytes": 28747738,
   "sha256": "ca319e9539cd0f1e291cf56074760121eaf39650f5dbf84b6e52c07f4b2944ec",
   "piezas": [
-   "motor.wasm.0",
-   "motor.wasm.1"
-  ]
+   "motor.wasm.comprimido"
+  ],
+  "gzip": 7103158
  },
  "isnet-fp16.onnx": {
   "bytes": 88152708,

@@ -841,6 +841,15 @@
     var anclaDestino = !VISTA && location.hash && !/^#\//.test(location.hash) && document.getElementById(decodeURIComponent(location.hash.slice(1)));
     if (anclaDestino) anclaDestino.scrollIntoView(); else window.scrollTo(0, 0);
   }
+  var angosta = window.matchMedia("(max-width:779px)");
+  function ubicarOpciones() {
+    var o = $(".h-opciones"), r = $("#resultados"), cuerpo = $(".h-cuerpo");
+    if (!o || !r || !cuerpo) return;
+    if (angosta.matches) {
+      if (o.previousElementSibling !== r) r.parentNode.insertBefore(o, r.nextSibling);
+    } else if (o.parentNode !== cuerpo) cuerpo.appendChild(o);
+  }
+  if (angosta.addEventListener) angosta.addEventListener("change", ubicarOpciones);
   function ubicarAnuncio() {
     var capa = $("#capa-anuncio");
     if (!capa || ruta.tipo !== "portada") return;
@@ -1568,6 +1577,7 @@
     }).join("") + (como ? '<section class="h-sec"><h2>Cómo se hace</h2>' + lista_(como.l) + "</section>" : "") + '<section class="te-sirvio" id="te-sirvio"><p>Gracias por usar Imagomakk. ¿Te sirvió? <button type="button" data-ts="si">Sí</button> · <button type="button" data-ts="no">No</button></p><div id="ts-respuesta"></div></section>' + (faq.length ? '<section class="h-sec faq"><h2>Preguntas frecuentes</h2>' + faqHtml(faq) + "</section>" : "") + "</div>" + '<aside class="h-opciones" aria-label="Opciones">' + opHtml + '<p class="aviso-peso" id="aviso-peso" hidden></p>' + '<p class="aviso-herr" id="aviso-herr" role="status" hidden></p>' + '<button type="button" class="boton-principal" id="procesar">' + esc(boton(h)) + "</button>" + '<div class="anuncio anuncio-herr"><div>Espacio fijo 300 × 250<small data-anuncio-carga></small></div></div>' + "</aside></div>";
     $("#lugar-zona-herr").appendChild(zona);
     $("#lugar-zona-herr").appendChild(estado);
+    ubicarOpciones();
     $("#zona .zona-titulo").textContent = h.zona[0];
     $("#zona .boton-elegir").textContent = h.zona[1];
     $$("[data-anuncio-carga]").forEach(function(e) {
@@ -3081,6 +3091,7 @@
   }
   mostrar();
   primeraCarga = false;
+  document.documentElement.classList.add("armada");
   recibirEntrega();
   confirmarClave();
   if (!VISTA) pedirAlQueAbrio();

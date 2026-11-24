@@ -17,24 +17,44 @@ function leerManifiesto() {
   }));
 }
 
+const PIEZA = 20971520, A_LA_VEZ = 3;
+
+const tamBajada = m => m.gzip || m.bytes;
+
 async function bajar(nombre, alAvance) {
   const m = (await leerManifiesto())[nombre];
-  const todo = new Uint8Array(m.bytes);
-  let pos = 0;
-  for (const pieza of m.piezas) {
-    const r = await fetch(base + pieza);
-    if (!r.ok) throw new Error("fetch " + pieza);
+  const total = tamBajada(m);
+  const todo = new Uint8Array(total);
+  let pos = 0, sig = 0;
+  async function una(i) {
+    const r = await fetch(base + m.piezas[i]);
+    if (!r.ok) throw new Error("fetch " + m.piezas[i]);
     const lector = r.body.getReader();
+    let p = i * PIEZA;
+    const fin = Math.min(p + PIEZA, total);
     for (;;) {
       const {done: done, value: value} = await lector.read();
       if (done) break;
-      todo.set(value, pos);
+      if (p + value.length > fin) throw new Error("fetch " + m.piezas[i] + ": tamaño");
+      todo.set(value, p);
+      p += value.length;
       pos += value.length;
       if (alAvance) alAvance(pos);
     }
+    if (p !== fin) throw new Error("fetch " + m.piezas[i] + ": incompleto");
   }
-  if (pos !== m.bytes) throw new Error("fetch " + nombre + ": incompleto");
-  return todo;
+  async function trabajador() {
+    while (sig < m.piezas.length) await una(sig++);
+  }
+  await Promise.all(Array.from({
+    length: Math.min(A_LA_VEZ, m.piezas.length)
+  }, trabajador));
+  if (pos !== total) throw new Error("fetch " + nombre + ": incompleto");
+  if (!m.gzip) return todo;
+  const ds = new Blob([ todo ]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const plano = new Uint8Array(await new Response(ds).arrayBuffer());
+  if (plano.length !== m.bytes) throw new Error("fetch " + nombre + ": descompresión");
+  return plano;
 }
 
 function nombreModelo(calidad, que) {
@@ -50,14 +70,14 @@ async function sesion(calidad, gpu, alAvance, que) {
   if (sesiones[clave]) return sesiones[clave];
   const man = await leerManifiesto();
   const modelo = nombreModelo(calidad, que);
-  const total = (binarioMotor ? 0 : man["motor.wasm"].bytes) + man[modelo].bytes;
+  const total = (binarioMotor ? 0 : tamBajada(man["motor.wasm"])) + tamBajada(man[modelo]);
   let hecho = 0;
   const av = n => {
     if (alAvance) alAvance(hecho + n, total);
   };
   if (!binarioMotor) {
     binarioMotor = await bajar("motor.wasm", av);
-    hecho += man["motor.wasm"].bytes;
+    hecho += tamBajada(man["motor.wasm"]);
   }
   if (!motorListo) {
     ort.env.wasm.wasmBinary = binarioMotor;

@@ -798,6 +798,7 @@ body:has(#vista-portada:not([hidden])) .pie{margin-top:0}
 @media (max-width:1100px){.texto-cuerpo{gap:32px}}
 @media (max-width:779px){.texto-cuerpo{grid-template-columns:minmax(0,1fr)}.texto-lado{display:none}}
 .js .prerender{display:none}
+.js:not(.armada) .pie{display:none}
 .res-caja{container-type:inline-size}
 .res-acc{display:flex;align-items:center;gap:12px;flex:none}
 .res-acc button{white-space:nowrap}
@@ -830,6 +831,7 @@ body:has(#vista-portada:not([hidden])) .pie{margin-top:0}
 .escritorio .nav-sa,.escritorio .pie a.pie-sa,.escritorio .pie .columnas > div:nth-child(3),.escritorio .te-sirvio{display:none!important}
 @media (min-width:780px){.h-opciones{grid-row:2;padding-top:0}}
 .h-opciones .anuncio{margin-top:30px}
+.h-principal > .h-opciones{position:static;margin:28px 0 8px}
 .visor-marco canvas.sf-capa{position:absolute;inset:0;width:100%!important;height:100%!important;max-height:none!important;background:none!important;box-shadow:none!important;pointer-events:none}
 .visor-capa.sf-mover{cursor:move}
 .sf-logo{flex-wrap:wrap}
@@ -962,3 +964,16 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
 .opc-campo .paso-num input{width:64px;text-align:center}
 .paso{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border:.5px solid var(--linea2);border-radius:6px;color:var(--tx);font-size:17px;line-height:1;transition:border-color .46s var(--resorte),color .46s var(--resorte)}
 .paso:hover{border-color:var(--acento);color:var(--acento)}
+@media (max-width:640px){
+  .cabecera > .envoltura{grid-template-columns:1fr auto;row-gap:2px;padding-bottom:6px}
+  .cabecera > .envoltura > .marca{grid-column:1;grid-row:1}
+  .cabecera > .envoltura > .nav-derecha{grid-column:2;grid-row:1;flex-wrap:nowrap;gap:4px}
+  .cabecera > .envoltura > nav.nav{grid-column:1 / -1;grid-row:2;justify-self:center}
+}
+@media (max-width:779px){
+  .h-linea{grid-template-columns:minmax(0,1fr);gap:10px}
+  .h-linea > span{display:none}
+  .h-linea h1{text-align:left}
+  .h-opciones .anuncio{align-items:center}
+  .h-principal > .anuncio-franja-herr{display:none}
+}
