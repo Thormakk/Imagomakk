@@ -1,6 +1,6 @@
-var VERSION = "imagomakk-2026-11-26-105";
+var VERSION = "imagomakk-2026-11-26-106";
 
-var BASE = "imagomakk-base-" + VERSION, PESADO = "imagomakk-pesado-22";
+var BASE = "imagomakk-base-" + VERSION, PESADO = "imagomakk-pesado-23";
 
 var ESENCIAL = [ "./", "css/imagomakk.css", "js/i18n.js", "js/contenido.js", "js/motor.js", "js/herramientas.js", "js/sobre-foto.js", "js/herramientas2.js", "js/hojas.js", "js/abrir.js", "js/app.js", "vendor/fflate.min.js", "img/icono.svg", "img/tema-sol.png", "img/tema-luna.png", "img/thormakk.png", "fuentes/instrument-serif-latin-400-normal.woff2", "fuentes/instrument-serif-latin-400-italic.woff2", "fuentes/inter-latin-400-normal.woff2", "fuentes/inter-latin-500-normal.woff2", "fuentes/inter-latin-600-normal.woff2" ];
 

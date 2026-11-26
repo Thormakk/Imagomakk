@@ -142,7 +142,7 @@
       });
     }
   }
-  var GIF_ANIMA = /^\/(girar-y-voltear|recortar-imagen|redimensionar-imagen|tamano-para-instagram|blanco-y-negro-y-filtros|foto-a-dibujo|bordes-y-esquinas-redondeadas|marca-de-agua|agregar-texto-y-dibujos|crear-meme)\//;
+  var GIF_ANIMA = /^\/(girar-y-voltear|recortar-imagen|redimensionar-imagen|tamano-para-instagram|blanco-y-negro-y-filtros|foto-antigua|foto-a-dibujo|bordes-y-esquinas-redondeadas|marca-de-agua|agregar-texto-y-dibujos|crear-meme)\//;
   var GIF_AVISA = /^\/(colorear-fotos|dividir-imagen|dividir-imagen-para-instagram|convertir-imagen|imagen-a-svg|[a-z]+-a-(jpg|png|webp|svg)|desenfocar|desenfocar-caras|quitar-fondo|agrandar-imagen|borrar-objetos|foto-carnet-y-pasaporte)\//;
   function gifQueda() {
     var r = IM_RUTA(), fo = (IM.opcion("Formato") || "").toLowerCase();
@@ -318,7 +318,7 @@
     this.cont = cont;
     this.op = op;
     this.lote = 0;
-    var conPrevia = /^\/(dividir-imagen|dividir-imagen-para-instagram|girar-y-voltear|blanco-y-negro-y-filtros|foto-a-dibujo|recortar-imagen|desenfocar|marca-de-agua|crear-meme|agregar-texto-y-dibujos|collage|crear-gif|foto-carnet-y-pasaporte)\//.test(IM_RUTA());
+    var conPrevia = /^\/(dividir-imagen|dividir-imagen-para-instagram|girar-y-voltear|blanco-y-negro-y-filtros|foto-antigua|foto-a-dibujo|recortar-imagen|desenfocar|marca-de-agua|crear-meme|agregar-texto-y-dibujos|collage|crear-gif|foto-carnet-y-pasaporte)\//.test(IM_RUTA());
     cont.innerHTML = '<div class="visor" hidden><p class="res-rotulo visor-rotulo">' + (conPrevia ? "Vista previa" : "Original") + BOTON_REST + "</p>" + (op.grilla ? '<div class="visor-ver"></div>' : "") + '<div class="visor-uno"><div class="visor-area"><div class="visor-marco"><canvas class="visor-lienzo"></canvas><div class="visor-capa"></div></div>' + (op.derecha ? '<div class="visor-marco visor-der"></div>' : "") + "</div>" + (op.nota ? '<p class="visor-nota">' + esc(op.nota) + "</p>" : "") + "</div>" + (op.grilla ? '<div class="gal-grilla visor-grilla" hidden></div>' : "") + "</div>";
     if ($(".visor-nota", cont)) IM.suavizarAlto($(".visor-nota", cont));
     this.el = $(".visor", cont);
@@ -2759,6 +2759,145 @@
         });
       }, {
         nombreZip: "con-filtro.zip"
+      });
+    }
+  };
+  var AGREGAR_ANTIGUA = [ "Grano", "Bordes oscurecidos" ];
+  function semillaDe(f) {
+    var s = 2166136261, t = (f && f.name || "") + "|" + (f && f.size || 0);
+    for (var i = 0; i < t.length; i++) {
+      s ^= t.charCodeAt(i);
+      s = Math.imul(s, 16777619) >>> 0;
+    }
+    return s || 1;
+  }
+  function antiguaActual(f) {
+    var e = $("#campo-intensidad input");
+    return {
+      estilo: (IM.opcion("Estilo") || "Sepia").toLowerCase(),
+      intensidad: e ? num(e.value) : 70,
+      agregar: IM.multi("Agregar").map(function(x) {
+        return x.toLowerCase();
+      }),
+      semilla: semillaDe(f)
+    };
+  }
+  function despAgregar() {
+    return $$(".h-opciones .desp").filter(function(x) {
+      return IM_ES($(".desp-rotulo", x)).replace(/:$/, "") === "Agregar";
+    })[0];
+  }
+  H["foto-antigua"] = {
+    opcion: function(rotulo, valor, ui) {
+      if (rotulo === "Intensidad") return campo("campo-intensidad", "Intensidad", '<input type="range" min="0" max="100" step="1" value="70"><output>70</output>');
+      if (rotulo !== "Agregar") return null;
+      var items = valor.replace(/\.$/, "").split(" · "), h = ui.varias(rotulo, items, false);
+      AGREGAR_ANTIGUA.forEach(function(it) {
+        h = h.replace('aria-selected="false">' + it + "<", 'aria-selected="true">' + it + "<");
+      });
+      return h.replace('<span class="desp-valor">Ninguna</span>', '<span class="desp-valor">' + AGREGAR_ANTIGUA.length + " de " + items.length + "</span>");
+    },
+    montar: function(cont) {
+      var v, tok = 0, url = null;
+      var actual = function() {
+        var a = IM.archivos()[IM.elegido()];
+        return a ? a.file : null;
+      };
+      var hacer = function(b, f) {
+        return codificar(b, [ {
+          antigua: antiguaActual(f)
+        } ], {
+          formato: "jpg",
+          calidad: 92
+        }, [ b ]);
+      };
+      var previa = debounce(function() {
+        if (!v || !v.img) return;
+        var t = ++tok;
+        v.muestra().then(function(b) {
+          return hacer(b, actual());
+        }).then(function(r) {
+          if (t !== tok) return;
+          if (url) URL.revokeObjectURL(url);
+          url = URL.createObjectURL(r.blob);
+          var der = $(".visor-previa", cont);
+          if (!der) {
+            der = document.createElement("img");
+            der.className = "visor-previa";
+            der.alt = "";
+            v.lienzo.parentNode.insertBefore(der, v.capa);
+          }
+          der.src = url;
+        }, function() {});
+      }, 120);
+      v = new Visor(cont, {
+        lado: 800,
+        alCambiar: previa,
+        prepararPrevia: function(c) {
+          var f = actual();
+          return createImageBitmap(c).then(function(b) {
+            return hacer(b, f);
+          }).then(function(r) {
+            if (url) URL.revokeObjectURL(url);
+            url = URL.createObjectURL(r.blob);
+            return url;
+          });
+        },
+        grilla: function(marco, f, img, c) {
+          createImageBitmap(c).then(function(b) {
+            return hacer(b, f);
+          }).then(function(r) {
+            var im = document.createElement("img");
+            im.alt = "";
+            im.src = URL.createObjectURL(r.blob);
+            im.onload = function() {
+              setTimeout(function() {
+                URL.revokeObjectURL(im.src);
+              }, 1e3);
+            };
+            if (c.parentNode) c.replaceWith(im);
+          }, function() {});
+        }
+      });
+      var cambio = function() {
+        previa();
+        v.refrescar();
+      };
+      IM.alCambiarOpcion(cambio);
+      var ri = $("#campo-intensidad input");
+      if (ri) ri.addEventListener("input", function() {
+        ri.nextElementSibling.textContent = ri.value;
+        cambio();
+      });
+      document.addEventListener("im-restablecer", function() {
+        var d = despAgregar();
+        if (!d || !document.body.contains(d)) return;
+        var lis = $$("li", d);
+        lis.forEach(function(li) {
+          li.setAttribute("aria-selected", AGREGAR_ANTIGUA.indexOf(IM_ES(li)) >= 0 ? "true" : "false");
+        });
+        $(".desp-valor", d).textContent = AGREGAR_ANTIGUA.length + " de " + lis.length;
+        cambio();
+      });
+    },
+    procesar: function() {
+      cadaImagen("Envejeciendo", function(f) {
+        var fmt = formatoElegido("Formato", f), o = antiguaActual(f);
+        return IMMotor.fuente(f).then(function(src) {
+          return codificar(src, [ {
+            antigua: o
+          } ], {
+            formato: fmt,
+            calidad: 90
+          }, src instanceof ImageBitmap ? [ src ] : []);
+        }).then(function(r) {
+          return {
+            nombre: base(f.name) + "-antigua." + fmt,
+            blob: r.blob
+          };
+        });
+      }, {
+        nombreZip: "fotos-antiguas.zip"
       });
     }
   };
