@@ -4,6 +4,60 @@
   function formatoRaro(f) {
     return /\.(heic|heif|tiff?)$/i.test(f.name) || /heic|heif|tiff/i.test(f.type || "");
   }
+  var RAW = /\.(dng|cr2|cr3|crw|nef|nrw|arw|srf|sr2|orf|rw2|raf|pef|srw|3fr|erf|kdc|mrw|x3f|iiq|rwl|mos|dcr)$/i;
+  function esRaw(f) {
+    return RAW.test(f.name || "");
+  }
+  function abrirRaw(f) {
+    var base = (f.name || "foto").replace(/\.[^.]+$/, "");
+    return Promise.all([ import(BASE + "vendor/libraw/index.js"), f.arrayBuffer() ]).then(function(r) {
+      var raw = new r[0].default;
+      return raw.open(new Uint8Array(r[1]), {
+        useCameraWb: true,
+        outputBps: 8
+      }).then(function() {
+        return raw.imageData();
+      }).then(function(img) {
+        var w = img.width, h = img.height, n = w * h, s = img.data, rgba = new Uint8ClampedArray(n * 4);
+        if (!w || !h || !s || s.length < n * 3) throw {
+          codigo: "imagen"
+        };
+        for (var i = 0, j = 0, k = 0; i < n; i++, j += 3, k += 4) {
+          rgba[k] = s[j];
+          rgba[k + 1] = s[j + 1];
+          rgba[k + 2] = s[j + 2];
+          rgba[k + 3] = 255;
+        }
+        raw.dispose();
+        var c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        c.getContext("2d").putImageData(new ImageData(rgba, w, h), 0, 0);
+        return new Promise(function(ok, mal) {
+          c.toBlob(function(b) {
+            c.width = c.height = 0;
+            if (!b) return mal({
+              codigo: "memoria"
+            });
+            ok(new File([ b ], base + ".jpg", {
+              type: "image/jpeg",
+              lastModified: f.lastModified
+            }));
+          }, "image/jpeg", .95);
+        });
+      }, function(e) {
+        try {
+          raw.dispose();
+        } catch (x) {}
+        throw e;
+      });
+    }).catch(function(e) {
+      throw {
+        codigo: e && e.codigo === "memoria" ? "memoria" : "imagen",
+        archivo: f.name
+      };
+    });
+  }
   function esSvg(f) {
     return /\.svg$/i.test(f.name) || f.type === "image/svg+xml";
   }
@@ -94,6 +148,18 @@
       mc({
         codigo: "cancelado"
       });
+    }
+    if (Object.keys(fondoPend).length) {
+      if (trFondo) trFondo.terminate();
+      trFondo = null;
+      var lf = fondoPend;
+      fondoPend = {};
+      Object.keys(lf).forEach(function(k) {
+        lf[k].mal({
+          codigo: "cancelado"
+        });
+      });
+      carasHechas = {};
     }
     Object.keys(pendientes).forEach(function(k) {
       pendientes[k].mal({
@@ -186,6 +252,72 @@
       };
     });
   }
+  var trAbrir = null, abrirSig = 1, abrirPend = {};
+  function decodificar(f, lado, bm) {
+    var enPagina = function() {
+      if (!lado) return createImageBitmap(f, {
+        imageOrientation: "from-image"
+      });
+      var k = Math.min(1, lado / Math.max(bm.width, bm.height));
+      return createImageBitmap(bm, {
+        resizeWidth: Math.max(1, Math.round(bm.width * k)),
+        resizeHeight: Math.max(1, Math.round(bm.height * k)),
+        resizeQuality: "high"
+      });
+    };
+    if (typeof Worker === "undefined" || trAbrir === false) return enPagina();
+    try {
+      if (!trAbrir) {
+        trAbrir = new Worker(BASE + "js/abrir.js");
+        trAbrir.onmessage = function(e) {
+          var p = abrirPend[e.data.id];
+          if (!p) return;
+          delete abrirPend[e.data.id];
+          if (e.data.b) p.ok(e.data.b); else p.mal();
+        };
+        trAbrir.onerror = function() {
+          trAbrir = false;
+          var l = abrirPend;
+          abrirPend = {};
+          Object.keys(l).forEach(function(k) {
+            l[k].mal();
+          });
+        };
+      }
+    } catch (e) {
+      trAbrir = false;
+      return enPagina();
+    }
+    return new Promise(function(ok, mal) {
+      var id = abrirSig++;
+      abrirPend[id] = {
+        ok: ok,
+        mal: mal
+      };
+      if (!lado) {
+        trAbrir.postMessage({
+          id: id,
+          f: f
+        });
+        return;
+      }
+      var k = Math.min(1, lado / Math.max(bm.width, bm.height));
+      trAbrir.postMessage({
+        id: id,
+        f: f,
+        ancho: Math.max(1, Math.round(bm.width * k)),
+        alto: Math.max(1, Math.round(bm.height * k))
+      });
+    }).catch(enPagina);
+  }
+  function bitmapChico(f, lado) {
+    return bitmap(f).then(function(b) {
+      if (Math.max(b.width, b.height) <= lado || cuadroDe.has(f) || esSvg(f) || formatoRaro(f)) return null;
+      return decodificar(f, lado, b).catch(function() {
+        return null;
+      });
+    });
+  }
   function bitmap(f) {
     if (cuadroDe.has(f)) return createImageBitmap(cuadroDe.get(f));
     if (cacheBitmap.has(f)) return cacheBitmap.get(f);
@@ -194,9 +326,7 @@
       fuente: f
     }).then(function(r) {
       return r.bitmap;
-    }) : createImageBitmap(f, {
-      imageOrientation: "from-image"
-    }).catch(function() {
+    }) : decodificar(f).catch(function() {
       throw {
         codigo: "imagen",
         archivo: f.name
@@ -279,16 +409,91 @@
       };
     });
   }
+  var trFondo = null, fondoSig = 1, fondoPend = {};
+  function enTrabajadorFondo(op, f, o, alAvance) {
+    if (typeof Worker === "undefined") return null;
+    var comun = !cuadroDe.has(f) && !esSvg(f) && !formatoRaro(f);
+    return (comun ? Promise.resolve(null) : bitmap(f)).then(function(b) {
+      return new Promise(function(ok, mal) {
+        if (!trFondo) {
+          try {
+            trFondo = new Worker(BASE + "vendor/isnet/fondo-tr.mjs", {
+              type: "module"
+            });
+          } catch (e) {
+            mal(errorFondo(e));
+            return;
+          }
+          trFondo.onmessage = function(e) {
+            var d = e.data || {}, p = fondoPend[d.id];
+            if (!p) return;
+            if (d.tipo === "avance") {
+              if (p.avance && d.t) p.avance(d.a, d.t);
+              return;
+            }
+            delete fondoPend[d.id];
+            if (d.tipo === "listo") p.ok(d.r); else p.mal(errorFondo(d.detalle));
+          };
+          trFondo.onerror = function(e) {
+            trFondo = null;
+            var l = fondoPend;
+            fondoPend = {};
+            Object.keys(l).forEach(function(k) {
+              l[k].mal(errorFondo(e && e.message || "worker"));
+            });
+          };
+        }
+        var id = fondoSig++;
+        fondoPend[id] = {
+          ok: ok,
+          mal: mal,
+          avance: alAvance
+        };
+        if (!cuadroDe.has(f) && !esSvg(f) && !formatoRaro(f)) {
+          trFondo.postMessage({
+            id: id,
+            op: op,
+            img: f,
+            o: o
+          });
+          return;
+        }
+        createImageBitmap(b).then(function(c) {
+          trFondo.postMessage({
+            id: id,
+            op: op,
+            img: c,
+            o: o
+          }, [ c ]);
+        }, function(e) {
+          delete fondoPend[id];
+          mal(errorFondo(e));
+        });
+      });
+    });
+  }
   function quitarFondo(f, calidad, alAvance, que) {
-    return Promise.all([ libFondo(), opcionesFondo(calidad, alAvance, que), bitmap(f) ]).then(function(r) {
-      return r[0].quitarFondo(r[2], r[1]);
+    return opcionesFondo(calidad, alAvance, que).then(function(o) {
+      return enTrabajadorFondo("quitarFondo", f, {
+        calidad: o.calidad,
+        gpu: o.gpu,
+        que: o.que
+      }, alAvance) || Promise.all([ libFondo(), bitmap(f) ]).then(function(r) {
+        return r[0].quitarFondo(r[1], o);
+      });
     }).catch(function(e) {
       throw errorFondo(e);
     });
   }
   function mascara(f, calidad, alAvance, que) {
-    return Promise.all([ libFondo(), opcionesFondo(calidad, alAvance, que), bitmap(f) ]).then(function(r) {
-      return r[0].mascara(r[2], r[1]);
+    return opcionesFondo(calidad, alAvance, que).then(function(o) {
+      return enTrabajadorFondo("mascara", f, {
+        calidad: o.calidad,
+        gpu: o.gpu,
+        que: o.que
+      }, alAvance) || Promise.all([ libFondo(), bitmap(f) ]).then(function(r) {
+        return r[0].mascara(r[1], o);
+      });
     }).catch(function(e) {
       throw errorFondo(e);
     });
@@ -297,13 +502,14 @@
   function caras(f, alAvance) {
     var k = f.name + "|" + f.size + "|" + f.lastModified;
     if (carasHechas[k]) return carasHechas[k];
-    return carasHechas[k] = Promise.all([ libFondo(), bitmap(f) ]).then(function(r) {
+    var av = function(a, t) {
+      if (alAvance && t) alAvance(a, t);
+    };
+    return carasHechas[k] = (enTrabajadorFondo("caras", f, {}, av) || Promise.all([ libFondo(), bitmap(f) ]).then(function(r) {
       return r[0].caras(r[1], {
-        alAvance: function(a, t) {
-          if (alAvance && t) alAvance(a, t);
-        }
+        alAvance: av
       });
-    }).catch(function(e) {
+    })).catch(function(e) {
       delete carasHechas[k];
       throw errorFondo(e);
     });
@@ -515,8 +721,11 @@
     }
   }
   window.IMMotor = {
+    bitmapChico: bitmapChico,
     BASE: BASE,
     formatoRaro: formatoRaro,
+    esRaw: esRaw,
+    abrirRaw: abrirRaw,
     esSvg: esSvg,
     formatoOriginal: formatoOriginal,
     bitmap: bitmap,

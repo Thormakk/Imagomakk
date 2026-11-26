@@ -439,69 +439,78 @@
       var c = document.createElement("canvas");
       c.width = Math.round(img.width * e);
       c.height = Math.round(img.height * e);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      var pv = $(".visor-previa:not([hidden])", self.el);
-      var cambiar = function(url) {
-        if (self.actual !== f) return;
-        var dibujar = function() {
-          self.lienzo.width = c.width;
-          self.lienzo.height = c.height;
-          self.escala = e;
-          self.lienzo.getContext("2d").drawImage(c, 0, 0);
-          var gi = $(".visor-gif", self.el);
-          if (animado) {
-            if (!gi) {
-              gi = document.createElement("img");
-              gi.className = "visor-gif";
-              gi.alt = "";
-              self.lienzo.parentNode.insertBefore(gi, self.lienzo.nextSibling);
+      return (e < 1 ? IMMotor.bitmapChico(f, Math.max(c.width, c.height)).catch(function() {
+        return null;
+      }) : Promise.resolve(null)).then(function(chica) {
+        if (self.actual !== f) {
+          if (chica && chica.close) chica.close();
+          return;
+        }
+        c.getContext("2d").drawImage(chica || img, 0, 0, c.width, c.height);
+        if (chica && chica.close) chica.close();
+        var pv = $(".visor-previa:not([hidden])", self.el);
+        var cambiar = function(url) {
+          if (self.actual !== f) return;
+          var dibujar = function() {
+            self.lienzo.width = c.width;
+            self.lienzo.height = c.height;
+            self.escala = e;
+            self.lienzo.getContext("2d").drawImage(c, 0, 0);
+            var gi = $(".visor-gif", self.el);
+            if (animado) {
+              if (!gi) {
+                gi = document.createElement("img");
+                gi.className = "visor-gif";
+                gi.alt = "";
+                self.lienzo.parentNode.insertBefore(gi, self.lienzo.nextSibling);
+              }
+              if (gi._url) URL.revokeObjectURL(gi._url);
+              gi._url = URL.createObjectURL(f);
+              gi.src = gi._url;
+              gi.hidden = false;
+            } else if (gi) {
+              gi.hidden = true;
+              if (gi._url) {
+                URL.revokeObjectURL(gi._url);
+                gi._url = null;
+              }
+              gi.removeAttribute("src");
             }
-            if (gi._url) URL.revokeObjectURL(gi._url);
-            gi._url = URL.createObjectURL(f);
-            gi.src = gi._url;
-            gi.hidden = false;
-          } else if (gi) {
-            gi.hidden = true;
-            if (gi._url) {
-              URL.revokeObjectURL(gi._url);
-              gi._url = null;
+            if (url && pv) {
+              pv.src = url;
             }
-            gi.removeAttribute("src");
-          }
-          if (url && pv) {
-            pv.src = url;
-          }
-          if (self.op.alCambiar) self.op.alCambiar(self);
-        };
-        if (self._mostrar) {
-          self._mostrar = false;
-          self.el.hidden = false;
-          self.el.classList.add("quieto");
-          dibujar();
-          void self.el.offsetHeight;
-          self.el.classList.remove("quieto");
-          self.el.hidden = true;
-          IM.mostrarSuave(self.el);
-        } else IM.altoSuave(self.el, dibujar);
-      };
-      if (pv && self.op.prepararPrevia) {
-        var listo = false;
-        self.op.prepararPrevia(c, f).then(function(url) {
-          if (!url) {
-            cambiar();
-            return;
-          }
-          var im = new Image;
-          im.onload = im.onerror = function() {
-            listo = true;
-            cambiar(url);
+            if (self.op.alCambiar) self.op.alCambiar(self);
           };
-          im.src = url;
-        }, function() {
-          cambiar();
-        });
-      } else cambiar();
-    }, function(e) {
+          if (self._mostrar) {
+            self._mostrar = false;
+            self.el.hidden = false;
+            self.el.classList.add("quieto");
+            dibujar();
+            void self.el.offsetHeight;
+            self.el.classList.remove("quieto");
+            self.el.hidden = true;
+            IM.mostrarSuave(self.el);
+          } else IM.altoSuave(self.el, dibujar);
+        };
+        if (pv && self.op.prepararPrevia) {
+          var listo = false;
+          self.op.prepararPrevia(c, f).then(function(url) {
+            if (!url) {
+              cambiar();
+              return;
+            }
+            var im = new Image;
+            im.onload = im.onerror = function() {
+              listo = true;
+              cambiar(url);
+            };
+            im.src = url;
+          }, function() {
+            cambiar();
+          });
+        } else cambiar();
+      });
+    }).catch(function(e) {
       IM.aviso(IM.textoError(e));
     });
   };
@@ -2867,6 +2876,7 @@
       if (arch.length < 2) {
         tok++;
         if (!caja.hidden) IM.ocultarSuave(caja);
+        avisarListo();
         return;
       }
       var t = ++tok;
@@ -2901,17 +2911,32 @@
             delete caja.dataset.saliendoAlto;
             IM.mostrarSuave(caja);
           } else IM.altoSuave(caja, poner);
+          avisarListo();
         });
       }, function(e) {
+        avisarListo();
         IM.aviso(IM.textoError(e));
       });
     }, 250);
-    IM.alCambiarArchivos(hacer);
+    var listos = [], avisarListo = function() {
+      var rs = listos;
+      listos = [];
+      rs.forEach(function(r) {
+        r();
+      });
+    };
+    IM.alCambiarArchivos(function() {
+      IM.esperarPrevia(new Promise(function(r) {
+        listos.push(r);
+      }));
+      hacer();
+    });
     IM.alCambiarOpcion(hacer);
     hacer();
     return hacer;
   }
   H["collage"] = {
+    conPrevia: true,
     opcion: opcionColor,
     montar: function(cont) {
       var act = function() {
@@ -2973,6 +2998,7 @@
     };
   }
   H["crear-gif"] = {
+    conPrevia: true,
     montar: function(cont) {
       previaConjunto(cont, function(bs) {
         return IMMotor.trabajar({
@@ -3103,6 +3129,7 @@
     });
   }
   H["foto-carnet-y-pasaporte"] = {
+    conPrevia: true,
     opcion: function(rotulo, valor, ui) {
       if (rotulo === "Fondo") return opcionColor(rotulo, valor, ui);
       if (rotulo === "País y documento") return ui.grupo(rotulo, DOCS.map(function(d) {
@@ -3161,15 +3188,24 @@
         pintarBarra();
         var f = a.file, t0 = ++tok;
         if (f === actual && img) return;
+        var listo;
+        IM.esperarPrevia(new Promise(function(r) {
+          listo = r;
+        }));
         Promise.all([ IMMotor.bitmap(f), encuadreCarnet(f, estados) ]).then(function(r) {
-          if (t0 !== tok) return;
+          if (t0 !== tok) {
+            listo();
+            return;
+          }
           img = r[0];
           actual = f;
           if (caja.hidden) {
             dibujar();
             IM.mostrarSuave(caja);
           } else IM.altoSuave(caja, dibujar);
+          listo();
         }, function(e) {
+          listo();
           IM.aviso(IM.textoError(e));
         });
       };

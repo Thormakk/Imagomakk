@@ -27,7 +27,7 @@
   });
   var archivos = [], siguienteId = 1;
   var zona = $("#zona"), lista = $("#lista"), selector = $("#selector"), estado = $("#estado"), nota = $("#nota");
-  var IMAGEN = /\.(jpe?g|jfif|png|webp|gif|bmp|avif|svg|heic|heif|tiff?|ico)$/i;
+  var IMAGEN = /\.(jpe?g|jfif|png|webp|gif|bmp|avif|svg|heic|heif|tiff?|ico|dng|cr2|cr3|crw|nef|nrw|arw|srf|sr2|orf|rw2|raf|pef|srw|3fr|erf|kdc|mrw|x3f|iiq|rwl|mos|dcr)$/i;
   var VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
   function tipoDe(f) {
     return /^image\//.test(f.type) || IMAGEN.test(f.name) ? "img" : /^video\//.test(f.type) || VIDEO.test(f.name) ? "video" : "otro";
@@ -60,13 +60,92 @@
     });
   }
   function agregar(files) {
+    files = Array.prototype.slice.call(files);
+    var raws = files.filter(function(f) {
+      return IMMotor.esRaw(f);
+    });
+    if (raws.length) {
+      var capa = capaEspera(), cancel = false, hechas = [], malas = [];
+      capa.alCancelar(function() {
+        cancel = true;
+      });
+      var cad = Promise.resolve();
+      raws.forEach(function(f, i) {
+        cad = cad.then(function() {
+          if (cancel) return;
+          capa.texto(raws.length > 1 ? "Abriendo las fotos RAW… " + (i + 1) + " de " + raws.length + "." : "Abriendo la foto RAW…");
+          return IMMotor.abrirRaw(f).then(function(j) {
+            if (!cancel) hechas.push([ f, j ]);
+          }, function() {
+            malas.push(f.name);
+          });
+        });
+      });
+      cad.then(function() {
+        capa.cerrar();
+        var fin = files.map(function(f) {
+          if (!IMMotor.esRaw(f)) return f;
+          var x = hechas.filter(function(h) {
+            return h[0] === f;
+          })[0];
+          return x ? x[1] : null;
+        }).filter(Boolean);
+        if (fin.length) agregarYa(fin);
+        if (malas.length) aviso(malas.join(", ") + ": este navegador no puede abrir ese formato de imagen.");
+      });
+      return;
+    }
+    agregarYa(files);
+  }
+  var esperas = null, juntar = null;
+  function esperarPrevia(p) {
+    if (esperas) esperas.push(p);
+  }
+  function junto(fn) {
+    if (juntar) juntar.push(fn); else fn();
+  }
+  function agregarYa(files) {
     var vacia = !archivos.length;
-    altoSuave(zona, function() {
-      Array.prototype.forEach.call(files, agregarArchivo);
-      pintar();
-      lista.scrollTop = lista.scrollHeight;
-    }, vacia);
-    miniaturasRaras();
+    if (!(herrActual && herrActual.conPrevia)) {
+      altoSuave(zona, function() {
+        Array.prototype.forEach.call(files, agregarArchivo);
+        pintar();
+        lista.scrollTop = lista.scrollHeight;
+      }, vacia);
+      miniaturasRaras();
+      return;
+    }
+    esperas = [];
+    juntar = juntar || [];
+    Array.prototype.forEach.call(files, agregarArchivo);
+    try {
+      avisarArchivos();
+    } finally {
+      var ps = esperas;
+      esperas = null;
+    }
+    var tope = new Promise(function(r) {
+      setTimeout(r, 2e3);
+    });
+    Promise.race([ Promise.all(ps.map(function(p) {
+      return Promise.resolve(p).catch(function() {});
+    })), tope ]).then(function() {
+      var cola = juntar || [];
+      juntar = null;
+      altoSuave(zona, function() {
+        sinAvisar = true;
+        try {
+          pintar();
+        } finally {
+          sinAvisar = false;
+        }
+        lista.scrollTop = lista.scrollHeight;
+        cola.forEach(function(f) {
+          f();
+        });
+      }, vacia);
+      miniaturasRaras();
+    });
   }
   var abriendo = false;
   function miniaturasRaras() {
@@ -326,13 +405,15 @@
     if (uno) qt.setAttribute("aria-hidden", "true"); else qt.removeAttribute("aria-hidden");
     marcarElegido();
     pintarEtiquetas();
+    if (herrActual && herrActual.marcarLista) herrActual.marcarLista(lista);
     lista.classList.toggle("desborda", lista.scrollHeight > lista.clientHeight);
     lista.scrollTop = previo;
     actualizarEstado();
     marcarGrilla();
     ubicarAnuncio();
-    avisarArchivos();
+    if (!sinAvisar) avisarArchivos();
   }
+  var sinAvisar = false;
   var arrastrandoId = null;
   lista.addEventListener("dragstart", function(e) {
     var li = e.target.closest("li");
@@ -1302,9 +1383,15 @@
   function suavizarAlto(el) {
     if (!el || el._suave || QUIETO || !window.MutationObserver) return;
     el._suave = true;
-    el._h = el.offsetHeight;
+    requestAnimationFrame(function() {
+      if (el._h == null) el._h = el.offsetHeight;
+    });
     new MutationObserver(function() {
-      var antes = el.getBoundingClientRect().height;
+      if (el._h == null) {
+        el._h = el.offsetHeight;
+        return;
+      }
+      var antes = el.getAnimations().length ? el.getBoundingClientRect().height : el._h;
       el.getAnimations().forEach(function(x) {
         x.cancel();
       });
@@ -1801,7 +1888,7 @@
     op = op || {};
     var capa = capaEspera();
     capa.texto(op.textoInicial || "Procesando…");
-    var cancelado = false;
+    var cancelado = false, viejo = false;
     enCurso = {
       cancelar: function() {
         cancelado = true;
@@ -1824,7 +1911,7 @@
       };
       capa.cerrar();
       enCurso = null;
-      if (avisoTok === avisoAntes) aviso("");
+      viejo = avisoTok === avisoAntes;
       if (!prep || !prep.listos || !prep.listos.length) return prep;
       var l = prep.listos;
       var cruce = abrirTanda(l);
@@ -1861,6 +1948,12 @@
         accion: "procesar",
         resultado: "ok"
       });
+      if (viejo) {
+        var t0 = avisoTok;
+        setTimeout(function() {
+          if (avisoTok === t0) aviso("");
+        }, 0);
+      }
       return prep;
     }).catch(function(e) {
       capa.cerrar();
@@ -2523,7 +2616,12 @@
     },
     descargar: descargar,
     repintarLista: function() {
-      pintar();
+      sinAvisar = true;
+      try {
+        pintar();
+      } finally {
+        sinAvisar = false;
+      }
     },
     aviso: aviso,
     procesar: procesar,
@@ -2535,9 +2633,19 @@
     expandir: expandir,
     contraer: contraer,
     cambiarAlto: cambiarAlto,
-    altoSuave: altoSuave,
+    altoSuave: function(el, c, cc) {
+      junto(function() {
+        altoSuave(el, c, cc);
+      });
+    },
     suavizarAlto: suavizarAlto,
-    mostrarSuave: mostrarSuave,
+    mostrarSuave: function(el) {
+      junto(function() {
+        mostrarSuave(el);
+      });
+    },
+    esperarPrevia: esperarPrevia,
+    junto: junto,
     ocultarSuave: ocultarSuave,
     mostrarOpcion: mostrarOpcion,
     ocultarValores: ocultarValores,
@@ -3098,6 +3206,20 @@
   if (!ESCRITORIO && "serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
     window.addEventListener("load", function() {
       navigator.serviceWorker.register("/sw.js").catch(function() {});
+      var c = navigator.connection;
+      if (c && c.saveData) return;
+      navigator.serviceWorker.ready.then(function(reg) {
+        setTimeout(function() {
+          var pedir = function() {
+            if (reg.active) reg.active.postMessage({
+              tipo: "imagomakk-livianos"
+            });
+          };
+          if (window.requestIdleCallback) requestIdleCallback(pedir, {
+            timeout: 1e4
+          }); else pedir();
+        }, 8e3);
+      });
     });
   }
 })();

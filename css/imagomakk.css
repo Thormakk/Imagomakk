@@ -977,3 +977,31 @@ input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-
   .h-opciones .anuncio{align-items:center}
   .h-principal > .anuncio-franja-herr{display:none}
 }
+.aj-resumen{margin:0 0 14px;font-size:14px;color:var(--sec)}
+.aj-resumen:empty{display:none}
+.aj-hojas{display:flex;flex-wrap:wrap;gap:20px 18px;align-items:flex-end}
+.aj-hojas figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.aj-hojas canvas{display:block;box-shadow:0 0 0 1px var(--linea2),0 1px 3px rgba(0,0,0,.12);background:#fff}
+.aj-hojas figcaption{font-size:12px;color:var(--sec)}
+.aj-rotulo{color:var(--acento)}
+.doc-recorte .lienzo{position:relative;display:inline-block;line-height:0;overflow:hidden;width:100%;box-shadow:0 0 0 1px var(--linea2)}
+.recorte-caja{position:absolute;box-shadow:0 0 0 9999px rgba(20,18,15,.45);outline:1.5px solid var(--acento);cursor:move;touch-action:none}
+.recorte-caja.fija{cursor:default}
+.recorte-caja.fija .tirador-r{display:none}
+.tirador-r{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--acento);border:2px solid #fff}
+.tirador-r[data-t=nw]{left:3px;top:3px;cursor:nwse-resize}.tirador-r[data-t=ne]{right:3px;top:3px;cursor:nesw-resize}
+.tirador-r[data-t=sw]{left:3px;bottom:3px;cursor:nesw-resize}.tirador-r[data-t=se]{right:3px;bottom:3px;cursor:nwse-resize}
+#lista li[data-grupo]{position:relative;padding-left:14px}
+#lista li[data-grupo]::before{content:"";position:absolute;left:2px;top:0;bottom:0;border-left:2px solid var(--acento)}
+#lista li.g-ini::before{top:16px;border-top:2px solid var(--acento);width:6px}
+#lista li.g-fin::before{bottom:16px;border-bottom:2px solid var(--acento);width:6px}
+#lista li.g-ini.g-fin::before{display:none}
+.g-rot{font-size:13px;font-weight:500;color:var(--acento);min-width:22px;flex:none}
+.g-suelto{font-size:13px;color:var(--acento);white-space:nowrap;margin-right:auto}
+.g-solo{font-size:13px;font-weight:400;color:var(--sec);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.g-solo input{accent-color:var(--acento)}
+.doc-ayuda{margin:0 0 16px;font-size:14px;color:var(--sec)}
+.doc-recortes{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:24px}
+.doc-recortes:empty{display:none}
+.doc-recorte{margin:0;width:min(260px,100%);display:flex;flex-direction:column;gap:6px}
+.doc-recorte figcaption{font-size:12px;color:var(--sec);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
