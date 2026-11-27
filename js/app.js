@@ -3018,7 +3018,22 @@
     v.innerHTML = '<div class="envoltura texto-cuerpo"><div class="texto-legal"><p class="volver"><a href="/">← Inicio</a></p>' + html + '<aside class="anuncio anuncio-franja-herr" aria-label="Publicidad"><div>Espacio fijo 728 × 90<small data-anuncio-carga></small></div></aside></div>' + '<aside class="texto-lado" aria-label="Publicidad"><div class="anuncio anuncio-herr"><div>Espacio fijo 300 × 250<small data-anuncio-carga></small></div></div></aside></div>';
     activarForm(v);
     if ($("#sa-caja", v)) pintarSinAnuncios();
+    alinearLado();
   }
+  function alinearLado() {
+    var v = $("#vista-texto"), lado = v && $(".texto-lado", v), cuerpo = v && $(".texto-cuerpo", v), h1 = v && $("h1", v);
+    if (!lado || !cuerpo || !h1 || !h1.nextElementSibling) return;
+    lado.style.marginTop = "0px";
+    var m = h1.nextElementSibling.getBoundingClientRect().top - cuerpo.getBoundingClientRect().top;
+    lado.style.marginTop = Math.max(0, Math.round(m)) + "px";
+  }
+  window.addEventListener("resize", debounceLado);
+  var tLado;
+  function debounceLado() {
+    clearTimeout(tLado);
+    tLado = setTimeout(alinearLado, 100);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(alinearLado);
   var SA = "imagomakk-sin-anuncios", SA_VISTA = "imagomakk-sin-anuncios-confirmada";
   function claveGuardada() {
     try {

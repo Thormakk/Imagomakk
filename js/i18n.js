@@ -168,7 +168,8 @@
     var ruta = window.IM_RUTA();
     b.innerHTML = '<img class="bandera" src="/img/banderas/' + L + '.svg" alt="" width="18" height="18"><span class="idioma-cod">' + L.toUpperCase() + '</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
     b.setAttribute("aria-label", NOMBRES[L]);
-    lista.innerHTML = IDIOMAS.map(function(l) {
+    var ORDEN = [ "id", "cs", "de", "en", "es", "fr", "it", "nl", "pl", "pt", "sk", "sv", "tr", "ru", "uk", "hi", "zh", "ja", "ko" ];
+    lista.innerHTML = ORDEN.map(function(l) {
       var href = urlDe(l, ruta);
       return '<a href="' + href + '" hreflang="' + l + '" lang="' + l + '"' + (l === L ? ' aria-current="true" class="actual"' : "") + '><img class="bandera" src="/img/banderas/' + l + '.svg" alt="" width="18" height="18"><span>' + NOMBRES[l] + "</span></a>";
     }).join("");
