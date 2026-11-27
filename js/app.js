@@ -682,6 +682,18 @@
       if (el.tagName === "A") el.setAttribute("aria-current", "page");
     }
   })();
+  function reservarAnchos() {
+    $$(".cabecera nav.nav a, #boton-herr").forEach(function(e) {
+      e.style.minWidth = "";
+      var w0 = e.style.fontWeight;
+      e.style.fontWeight = "600";
+      var w = e.getBoundingClientRect().width;
+      e.style.fontWeight = w0;
+      if (w) e.style.minWidth = Math.ceil(w) + "px";
+    });
+  }
+  reservarAnchos();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(reservarAnchos);
   function marcarActual() {
     $$("#grilla .herr").forEach(function(a) {
       var h = ruta.tipo === "herramienta" && window.IMAGOMAKK.herramientas[ruta.slug], base = h ? h.base || ruta.slug : null;
@@ -926,9 +938,16 @@
   function ubicarOpciones() {
     var o = $(".h-opciones"), r = $("#resultados"), cuerpo = $(".h-cuerpo");
     if (!o || !r || !cuerpo) return;
+    var marca = r.parentNode && r.parentNode !== o && !r._marca ? r._marca = document.createComment("resultados") : r._marca;
+    if (marca && !marca.parentNode) r.parentNode.insertBefore(marca, r);
+    var bot = $("#procesar", o);
     if (angosta.matches) {
-      if (o.previousElementSibling !== r) r.parentNode.insertBefore(o, r.nextSibling);
-    } else if (o.parentNode !== cuerpo) cuerpo.appendChild(o);
+      if (o.parentNode !== r.parentNode || o.nextSibling === r) r.parentNode.insertBefore(o, r);
+      if (bot && bot.nextSibling !== r) o.insertBefore(r, bot.nextSibling);
+    } else {
+      if (r.parentNode === o && marca && marca.parentNode) marca.parentNode.insertBefore(r, marca.nextSibling);
+      if (o.parentNode !== cuerpo) cuerpo.appendChild(o);
+    }
   }
   if (angosta.addEventListener) angosta.addEventListener("change", ubicarOpciones);
   function ubicarAnuncio() {

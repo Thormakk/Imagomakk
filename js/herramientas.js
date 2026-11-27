@@ -479,6 +479,14 @@
             if (url && pv) {
               pv.src = url;
             }
+            var med = $(".visor-medidas", self.el);
+            if (!med) {
+              med = document.createElement("p");
+              med.className = "cmp-medidas visor-medidas";
+              var ar = $(".visor-area", self.el);
+              ar.parentNode.insertBefore(med, ar.nextSibling);
+            }
+            med.textContent = img.width + " × " + img.height;
             if (self.op.alCambiar) self.op.alCambiar(self);
           };
           if (self._mostrar) {
