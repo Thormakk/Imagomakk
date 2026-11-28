@@ -1755,7 +1755,7 @@
         return f.p === q.p;
       })) faq.push(q);
     });
-    v.innerHTML = '<div class="envoltura h-cuerpo">' + '<header class="h-cabeza">' + '<div class="h-linea"><p class="volver"><a href="/">← Todas las herramientas</a></p>' + "<h1>" + esc(h.titulo) + "</h1><span></span></div>" + '<p class="bajada">' + esc(h.bajada) + "</p>" + "</header>" + '<div class="h-principal">' + '<div id="lugar-zona-herr"></div>' + '<div class="escena"><div class="trabajo-img" id="trabajo"></div>' + '<div class="galeria" id="galeria" hidden></div></div>' + '<div id="resultados"></div>' + '<aside class="anuncio anuncio-franja-herr" aria-label="Publicidad"><div>Espacio fijo 728 × 90<small data-anuncio-carga></small></div></aside>' + otras.map(function(s) {
+    v.innerHTML = '<div class="envoltura h-cuerpo">' + '<header class="h-cabeza">' + '<div class="h-linea"><span></span>' + "<h1>" + esc(h.titulo) + "</h1><span></span></div>" + '<p class="bajada">' + esc(h.bajada) + "</p>" + "</header>" + '<div class="h-principal">' + '<div id="lugar-zona-herr"></div>' + '<div class="escena"><div class="trabajo-img" id="trabajo"></div>' + '<div class="galeria" id="galeria" hidden></div></div>' + '<div id="resultados"></div>' + '<aside class="anuncio anuncio-franja-herr" aria-label="Publicidad"><div>Espacio fijo 728 × 90<small data-anuncio-carga></small></div></aside>' + otras.map(function(s) {
       return '<section class="h-sec"><h2>' + esc(s.t) + "</h2>" + lista_(s.l) + "</section>";
     }).join("") + (como ? '<section class="h-sec"><h2>Cómo se hace</h2>' + lista_(como.l) + "</section>" : "") + '<section class="te-sirvio" id="te-sirvio"><p>Gracias por usar Imagomakk. ¿Te sirvió? <button type="button" data-ts="si">Sí</button> · <button type="button" data-ts="no">No</button></p><div id="ts-respuesta"></div></section>' + (faq.length ? '<section class="h-sec faq"><h2>Preguntas frecuentes</h2>' + faqHtml(faq) + "</section>" : "") + "</div>" + '<aside class="h-opciones" aria-label="Opciones">' + opHtml + '<p class="aviso-peso" id="aviso-peso" hidden></p>' + '<p class="aviso-herr" id="aviso-herr" role="status" hidden></p>' + '<button type="button" class="boton-principal" id="procesar">' + esc(boton(h)) + "</button>" + '<div class="anuncio anuncio-herr"><div>Espacio fijo 300 × 250<small data-anuncio-carga></small></div></div>' + "</aside></div>";
     $("#lugar-zona-herr").appendChild(zona);
@@ -3111,7 +3111,7 @@
       if (enLista) html += "</ul>";
       if (enPasos) html += "</ol>";
     }
-    v.innerHTML = '<div class="envoltura texto-cuerpo"><div class="texto-legal"><p class="volver"><a href="/">← Inicio</a></p>' + html + '<aside class="anuncio anuncio-franja-herr" aria-label="Publicidad"><div>Espacio fijo 728 × 90<small data-anuncio-carga></small></div></aside></div>' + '<aside class="texto-lado" aria-label="Publicidad"><div class="anuncio anuncio-herr"><div>Espacio fijo 300 × 250<small data-anuncio-carga></small></div></div></aside></div>';
+    v.innerHTML = '<div class="envoltura texto-cuerpo"><div class="texto-legal">' + html + '<aside class="anuncio anuncio-franja-herr" aria-label="Publicidad"><div>Espacio fijo 728 × 90<small data-anuncio-carga></small></div></aside></div>' + '<aside class="texto-lado" aria-label="Publicidad"><div class="anuncio anuncio-herr"><div>Espacio fijo 300 × 250<small data-anuncio-carga></small></div></div></aside></div>';
     activarForm(v);
     if ($("#sa-caja", v)) pintarSinAnuncios();
     alinearLado();
