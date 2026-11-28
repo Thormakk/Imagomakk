@@ -815,6 +815,83 @@
   botonHerr.addEventListener("click", function() {
     if (panel.hidden) abrirPanel(); else cerrarPanel();
   });
+  (function() {
+    var cab = $(".cabecera"), raiz = document.documentElement, ultimo = window.scrollY, oculta = false, pend = false;
+    if (!cab) return;
+    function aplicar() {
+      cab.classList.toggle("cab-oculta", oculta);
+      raiz.style.setProperty("--cab-of", oculta ? "0px" : "var(--cab-h)");
+    }
+    function taparia() {
+      var h = cab.offsetHeight, vh = window.innerHeight, tapa = false;
+      $$(".h-opciones, .texto-lado, .mk-hoja, .anuncio-columna").forEach(function(el) {
+        if (tapa || !el.offsetParent || getComputedStyle(el).position !== "sticky") return;
+        var r = el.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top >= vh) return;
+        var cs = getComputedStyle(el), margen = (parseFloat(cs.top) || 0) - (oculta ? 0 : h);
+        var pa = el.parentNode, pr = pa.getBoundingClientRect(), pcs = getComputedStyle(pa);
+        var limite = pr.bottom - (parseFloat(pcs.paddingBottom) || 0) - (parseFloat(pcs.borderBottomWidth) || 0) - el.offsetHeight;
+        if (limite < h + margen - 1) tapa = true;
+      });
+      return tapa;
+    }
+    function medir() {
+      raiz.style.setProperty("--cab-h", cab.offsetHeight + "px");
+      aplicar();
+    }
+    function cuadro() {
+      pend = false;
+      var y = Math.max(0, window.scrollY), d = y - ultimo;
+      var foco = document.activeElement, teclado = false;
+      try {
+        teclado = !!foco && cab.contains(foco) && foco.matches(":focus-visible");
+      } catch (e) {
+        teclado = !!foco && cab.contains(foco);
+      }
+      if (!panel.hidden || teclado || y <= cab.offsetHeight) {
+        if (oculta) {
+          oculta = false;
+          aplicar();
+        }
+        ultimo = y;
+        return;
+      }
+      if (d > 4) {
+        if (!oculta) {
+          oculta = true;
+          aplicar();
+        }
+        ultimo = y;
+      } else if (d < -4) {
+        if (oculta && !taparia()) {
+          oculta = false;
+          aplicar();
+        }
+        ultimo = y;
+      }
+    }
+    window.addEventListener("scroll", function() {
+      if (!pend) {
+        pend = true;
+        requestAnimationFrame(cuadro);
+      }
+    }, {
+      passive: true
+    });
+    window.addEventListener("resize", medir);
+    cab.addEventListener("focusin", function(e) {
+      var v = true;
+      try {
+        v = e.target.matches(":focus-visible");
+      } catch (x) {}
+      if (v && oculta) {
+        oculta = false;
+        aplicar();
+      }
+    });
+    medir();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+  })();
   panel.addEventListener("click", function(e) {
     var a = e.target.closest(".herr");
     if (a && !a.dataset.motivo) cerrarPanel();
@@ -964,7 +1041,7 @@
     capa.style.bottom = Math.round(base.bottom - pie.top + 24) + "px";
     var anuncio = $(".anuncio-columna", capa), alto = anuncio.offsetHeight || 600;
     var nace = Math.round(t.top + window.scrollY);
-    anuncio.style.top = Math.max(16, Math.min(nace, Math.round(window.innerHeight / 2 - alto / 2))) + "px";
+    anuncio.style.top = "calc(var(--cab-of, 0px) + " + Math.max(16, Math.min(nace, Math.round(window.innerHeight / 2 - alto / 2))) + "px)";
   }
   window.addEventListener("resize", ubicarAnuncio);
   window.addEventListener("load", ubicarAnuncio);
